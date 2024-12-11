@@ -1,0 +1,182 @@
+name: belanak  Staging
+
+on:
+  push:
+    branches:
+      - "staging"
+
+env:
+  CHART: stg-belanak 
+  ARTIFACT_REGISTRY: "asia-southeast2-docker.pkg.dev/kirimin-aja/kaj-golang-srvc/stg-belanak"
+  ARTIFACT_HELM: "asia-southeast2-docker.pkg.dev/kirimin-aja/kaj-dev-helm-package"
+  APP_TAG: v1.0.${{ github.run_id }}
+  APP_PORT: 80
+  TARGET_PORT: 8081
+  NAMESPACE: "stg"
+  DOMAIN: "stg-srvc-belanak-ext.bakso.my.id"
+  GREEN_DOMAIN: "green-stg-srvc-belanak-ext.bakso.my.id"
+  INGRESS: "nginx"
+  IS_INTERNAL: false
+  SSL: true
+  SSL_REDIRECT: "true"
+  FORCE_SSL_REDIRECT: "true"
+  REPLICA: 1
+  HPA_ENABLE: false
+  MIN_REPLICAS: 1
+  MAX_REPLICAS: 2
+  CPU_AVERAGE: 60
+  MEMORY_AVERAGE: 60
+  RESOURCE_CPU: 50m
+  RESOURCE_MEMORY: 128Mi
+  RESOURCE_LIMIT_CPU: 1000m
+  RESOURCE_LIMIT_MEMORY: 3072Mi
+  AUTO_PROMOTE: true
+  DELAY_PROMOTE: 5
+  KUBERNETES: ${{ secrets.STG_KUBERNETES }}
+jobs:
+  gcp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/labeler@v4
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - id: "auth"
+        uses: "google-github-actions/auth@v1"
+        with:
+          credentials_json: "${{ secrets.GCP_CICD }}"
+      - name: Generate Domain
+        run: |
+          sh deployment/gcp/domain/staging.sh $DOMAIN   
+          sh deployment/gcp/domain/staging.sh $GREEN_DOMAIN
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/labeler@v4
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - id: "auth"
+        uses: "google-github-actions/auth@v1"
+        with:
+          credentials_json: "${{ secrets.GCP_CICD }}"
+
+      - name: Generate env
+        run: |
+          sudo apt update && sudo apt install gpg wget
+          wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+          gpg --no-default-keyring --keyring /usr/share/keyrings/hashicorp-archive-keyring.gpg --fingerprint
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+          sudo apt update && sudo apt install vault
+          export VAULT_ADDR=http://34.101.32.182:8080
+          vault login token=${{ secrets.VAULT_TOKEN }}
+          sh deployment/env-stg.sh
+      
+      - name: Append version
+        run: |
+          echo "APP_VERSION=$APP_TAG" >> .env
+
+      - name: Generate Domain
+        run: |
+          sh deployment/gcp/domain/staging.sh $DOMAIN
+          sh deployment/gcp/domain/staging.sh $GREEN_DOMAIN
+      
+      - name: Generatin Swaggo
+        uses: yegorrybchenko/go-swag-action@v0.1
+        with:
+          command: init -d src/ -o src/swagger
+          swagWersion: 1.16.4
+
+      - name: Build and tag image
+        run: docker build --no-cache -t "$ARTIFACT_REGISTRY:$APP_TAG" -f deployment/dockerfiles/dockerfile-stg .
+
+      - name: "Artifact Registry auth"
+        run: gcloud auth configure-docker asia-southeast2-docker.pkg.dev
+  
+      - name: Publish to GPR
+        run: |
+          docker push "$ARTIFACT_REGISTRY:$APP_TAG"
+  migrate:
+    runs-on: [self-hosted, kaj-dev-runner]
+    needs: build
+    steps:
+    - name: "Artifact Registry auth"
+      run: gcloud auth configure-docker asia-southeast2-docker.pkg.dev
+    - name: Pulling Images
+      run: docker pull "$ARTIFACT_REGISTRY:$APP_TAG"
+    - name: Migrate DB
+      run: |
+        docker run -i "$ARTIFACT_REGISTRY:$APP_TAG" /opt/belanak/belanak db:migrate up
+        docker rmi -f "$ARTIFACT_REGISTRY:$APP_TAG"
+  helming:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/labeler@v4
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - id: "auth"
+        uses: "google-github-actions/auth@v1"
+        with:
+          credentials_json: "${{ secrets.GCP_CICD }}"
+      - name: Set up Helm
+        uses: azure/setup-helm@v1
+        with:
+          version: 'v3.14.4'
+      - name: Setup Manifest Blue Green
+        run: |
+          sed -e "s|{{ARTIFACT_REGISTRY}}|$ARTIFACT_REGISTRY|g" \
+              -e "s|{{AUTO_PROMOTE}}|$AUTO_PROMOTE|g" \
+              -e "s|{{DELAY_PROMOTE}}|$DELAY_PROMOTE|g" \
+              -e "s|{{RESOURCE_CPU}}|$RESOURCE_CPU|g" \
+              -e "s|{{RESOURCE_MEMORY}}|$RESOURCE_MEMORY|g" \
+              -e "s|{{RESOURCE_LIMIT_CPU}}|$RESOURCE_LIMIT_CPU|g" \
+              -e "s|{{RESOURCE_LIMIT_MEMORY}}|$RESOURCE_LIMIT_MEMORY|g" \
+              -e "s|{{MEMORY_AVERAGE}}|$MEMORY_AVERAGE|g" \
+              -e "s|{{CPU_AVERAGE}}|$CPU_AVERAGE|g" \
+              -e "s|{{MAX_REPLICAS}}|$MAX_REPLICAS|g" \
+              -e "s|{{MIN_REPLICAS}}|$MIN_REPLICAS|g" \
+              -e "s|{{IS_INTERNAL}}|$IS_INTERNAL|g" \
+              -e "s|{{HPA_ENABLE}}|$HPA_ENABLE|g" \
+              -e "s|{{APP_PORT}}|$APP_PORT|g" \
+              -e "s|{{TARGET_PORT}}|$TARGET_PORT|g" \
+              -e "s|{{REPLICA_COUNT}}|$REPLICA|g" \
+              -e "s|{{APP_NAME}}|$CHART|g" \
+              -e "s|{{NAMESPACE}}|$NAMESPACE|g" \
+              -e "s|{{DOMAIN}}|$DOMAIN|g" \
+              -e "s|{{TAGS}}|$APP_TAG|g" \
+              -e "s|{{GREEN_DOMAIN}}|$GREEN_DOMAIN|g" \
+              -e "s|{{INGRESS}}|$INGRESS|g" \
+              -e "s|{{SSL}}|$SSL|g" \
+              -e "s|{{SSL_REDIRECT}}|$SSL_REDIRECT|g" \
+              -e "s|{{FORCE_SSL_REDIRECT}}|$FORCE_SSL_REDIRECT|g" \
+              deployment/helm/values.yaml.tpl > deployment/helm/values.yaml
+          sed -e "s|{{VERSION}}|$APP_TAG|g" \
+              -e "s|{{CHART_NAME}}|$CHART|g" \
+              deployment/helm/Chart.yaml.tpl > deployment/helm/Chart.yaml
+          rm -rf deployment/helm/values.yaml.tpl
+          rm -rf deployment/helm/Chart.yaml.tpl
+      - name: login with helm
+        run: gcloud auth print-access-token | helm registry login -u oauth2accesstoken --password-stdin https://asia-southeast2-docker.pkg.dev
+      - name: Create helm package
+        run: |
+          helm package deployment/helm
+      - name: Push Helm packages
+        run: |
+          helm push $CHART-$APP_TAG.tgz oci://$ARTIFACT_HELM
+  deploy:
+    runs-on: [self-hosted, kaj-dev-runner]
+    needs: helming
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/labeler@v4
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Kubectl set
+        run: |
+          kubectl config use-context $KUBERNETES
+      - name: Helm install
+        run: |
+          helm upgrade --install $CHART oci://$ARTIFACT_HELM/$CHART --version $APP_TAG -n $NAMESPACE
+      

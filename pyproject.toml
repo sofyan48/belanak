@@ -1,0 +1,54 @@
+[tool.poetry]
+name = "belanak"
+version = "0.1.0"
+description = ""
+authors = [ "Sofyan Saputra <sofyansaputra@kiriminaja.com>",]
+readme = "README.md"
+[[tool.poetry.packages]]
+include = "app"
+
+[tool.poetry.scripts]
+serve = "main:__main__"
+
+[tool.black]
+line-length = 88
+target-version = [ "py37", "py38", "py39", "py310", "py311",]
+exclude = "((.eggs | .git | .pytest_cache | build | dist))"
+
+[tool.ruff]
+line-length = 88
+exclude = [ ".git", "__pycache__", ".mypy_cache", ".pytest_cache",]
+select = [ "E", "W", "F", "C", "B",]
+ignore = [ "B904", "B006", "E501", "B008", "C901",]
+
+[tool.mypy]
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+exclude = [ "alembic", "__pycache__",]
+
+[tool.build-system]
+requires = [ "poetry-core",]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.12"
+httpx = "^0.27.0"
+python-dotenv = "^1.0.1"
+fastapi-pagination = "^0.12.14"
+python-json-logger = "^2.0.7"
+loguru = "^0.7.2"
+pymysql = "^1.1.1"
+pymongo = "^4.10.1"
+uvicorn = "^0.32.1"
+pydantic = "^2.10.3"
+pydantic-settings = "^2.6.1"
+fastapi = "^0.115.6"
+mistralai = "^1.2.5"
+python-multipart = "^0.0.19"
+pandas = "^2.2.3"
+pyarrow = "^18.1.0"
+fastparquet = "^2024.11.0"
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = [ "F401",]
