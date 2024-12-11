@@ -116,6 +116,6 @@ mydb
 
 
 deployment/models/*.json
-
+data.jsonl
 
 poetry.lock
