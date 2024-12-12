@@ -9,9 +9,8 @@ class ParamsListFinetuneJobs(BaseModel):
     page: conint(ge=1)
     limit: conint(ge=1)
 
-# class BodyFinetune(BaseModel):
-#     model: constr(min_length=1)
-#     filename: constr(min_length=1)
-#     step: conint(ge=1)
-#     learning_rate: float
-#     weight: int = conint(ge=1)
+class PayloadCancelFineTune(BaseModel):
+    id: constr(min_length=1)
+
+class PayloadStartJobFineTune(BaseModel):
+    id: constr(min_length=1)

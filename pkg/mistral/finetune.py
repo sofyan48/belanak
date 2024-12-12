@@ -14,6 +14,16 @@ class Finetune():
             }
         )
     
+    def cancel_job(self, job_id: str):
+        return self.client.fine_tuning.jobs.cancel(
+            job_id=job_id
+        )
+    
+    def start_job(self, job_id: str):
+        return self.client.fine_tuning.jobs.start(
+            job_id=job_id
+        )
+    
     def create_job(self, 
                    file_id: str, 
                    model: str, 
@@ -23,12 +33,11 @@ class Finetune():
         return self.client.fine_tuning.jobs.create(
             model= model, 
             training_files=[{"file_id": file_id, "weight": weight}],
-            # validation_files=[file_validation_id], 
             hyperparameters={
                 "training_steps": step,
                 "learning_rate": learning_rate
             },
-            auto_start=True
+            auto_start=False
         )
     
     def list_job(self, limit: int, page: int):
