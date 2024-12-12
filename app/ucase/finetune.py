@@ -1,26 +1,36 @@
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter, File, UploadFile, Form
 from app.appctx import IGetResponseBase, response
 from app.presentation import request
 from app import finetune
-import pandas, json, io
 
 router = APIRouter()
 
 @router.post("/finetune") 
-async def fine_tune(file: UploadFile = File(...)) -> IGetResponseBase:
-    # Membaca konten file secara asinkron
-    file_content = await file.read()
+async def fine_tune(model: str = Form(...),
+    filename: str = Form(...),
+    step: int = Form(...),
+    learning_rate: float = Form(...), 
+    weight: int = Form(...),
+    file: UploadFile = File(...)) -> IGetResponseBase:
+    
+    try:
+        file_content = await file.read()
+        result = finetune.upload_file(filename, file_content)
+        job_result = finetune.create_job(
+            file_id=result.id,
+            model=model,
+            step=step,
+            learning_rate=learning_rate,
+            weight=weight,
+        )
+    except Exception as e:
+        return response(
+            message="Failed",
+            data=None
+        )
 
-    result = finetune.upload_file("testing.jsonl", file_content)
-   
-    finetune.create_job(
-        file_id=result.id,
-        model="open-mistral-7b",
-        step=10,
-        learning_rate=0.0001,
-        weight=1,
-    )
     return response(
         message="Success",
-        data=result
+        data=job_result
     )
+

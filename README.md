@@ -1,4 +1,4 @@
-# {{PROJECT}}
+# Mistral AI Example
 Running via poetry and activate virtualenvironment
 ```
 poetry shell

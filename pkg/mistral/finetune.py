@@ -13,6 +13,7 @@ class Finetune():
                 "content": data,
             }
         )
+    
     def create_job(self, 
                    file_id: str, 
                    model: str, 
@@ -29,3 +30,17 @@ class Finetune():
             },
             auto_start=True
         )
+    
+    def list_job(self, limit: int, page: int, status):
+        return self.client.fine_tuning.jobs.list(
+            page=page,
+            page_size=limit,
+            status=status
+        )
+    
+    def get_job(self, job_id):
+        return self.client.fine_tuning.jobs.get(
+            job_id=job_id
+        )
+    
+    

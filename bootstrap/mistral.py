@@ -1,6 +1,7 @@
 from pkg.mistral import MistraClient
 from pkg.mistral.codestral import Codestral
 from pkg.mistral.finetune import Finetune
+from pkg.mistral.general import General
 from mistralai import Mistral
 import os
 
@@ -16,3 +17,6 @@ def codestral_client(client: Mistral):
 
 def fine_tuning(client: Mistral):
     return Finetune(client)
+
+def general_chat(client: Mistral):
+    return General(client)

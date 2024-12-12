@@ -13,7 +13,7 @@ APP_ROOT = os.path.join(os.path.dirname(__file__), '..')
 
 # bootstaping
 mistral_client = mistral.mistral_client()
-codestral = mistral.codestral_client(mistral)
+mistral_agent = mistral.general_chat(mistral_client)
 finetune = mistral.fine_tuning(mistral_client)
 
 # Core Application Instance
