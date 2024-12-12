@@ -9,7 +9,7 @@ router = APIRouter()
 @router.post("/chat") 
 async def send_chat(payload: request.RequesChat) -> IGetResponseBase:
     try:
-        agent = os.environ.get("", "ag:ea58d2f9:20241212:iankai:70172da5")
+        agent = os.environ.get("MISTRAL_AGENT", "ag:ea58d2f9:20241212:iankai:70172da5")
         result = mistral_agent.chat(agent_id=agent, msg=payload.chat)
         reformat_result = {
             "question": {
