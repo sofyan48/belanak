@@ -31,11 +31,10 @@ class Finetune():
             auto_start=True
         )
     
-    def list_job(self, limit: int, page: int, status):
+    def list_job(self, limit: int, page: int):
         return self.client.fine_tuning.jobs.list(
             page=page,
-            page_size=limit,
-            status=status
+            page_size=limit
         )
     
     def get_job(self, job_id):

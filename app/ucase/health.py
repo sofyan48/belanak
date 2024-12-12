@@ -8,6 +8,7 @@ router = APIRouter()
 async def build_retriever() -> IGetResponseBase:
     
     return response(
+        status_code=200,
         message="Success",
         data= None
         

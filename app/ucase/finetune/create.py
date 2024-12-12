@@ -25,11 +25,13 @@ async def fine_tune(model: str = Form(...),
         )
     except Exception as e:
         return response(
+            status_code=500,
             message="Failed",
             data=None
         )
 
     return response(
+        status_code=200,
         message="Success",
         data=job_result
     )
