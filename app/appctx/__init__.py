@@ -1,59 +1,37 @@
-from math import ceil
-from typing import Any, Generic, TypeVar
-from collections.abc import Sequence
-from fastapi_pagination import Params, Page
-from fastapi_pagination.bases import AbstractPage, AbstractParams
-from pydantic import Field
-from pydantic.generics import GenericModel
+from typing import Any, TypeVar
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from typing import Any, Dict, TypeVar, Optional
 
-from fastapi import Request, HTTPException
+from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 from app import app
 
 DataType = TypeVar("DataType")
-T = TypeVar("T")
 
-class PageBase(Page[T], Generic[T]):
-    previous_page: int | None = Field(
-        None, description="Page number of the previous page"
-    )
-    next_page: int | None = Field(None, description="Page number of the next page")
-
-
-class IResponseBase(GenericModel, Generic[T]):
+class IResponseBase(BaseModel):
     message: str = ""
-    meta: dict = {}
-    data: T | None
+    meta: Dict[str, Any] = {}
+    data: Optional[DataType] = None
 
-
-class IGetResponseBase(IResponseBase[DataType], Generic[DataType]):
-    message: str | None = "Data got correctly"
-    status_code: int | None = None
-
+class IGetResponseBase(IResponseBase):
+    message: str = "Data got correctly"
+    status_code: int = 200
 
 def response(
-    status_code: int,
-    data: DataType | None = None,
-    message: str | None = None,
-    meta: dict | Any | None = {}) -> ( IResponseBase[DataType]
-    | IGetResponseBase[DataType]):
-    try:
-        if message is None:
-            return {"data": data, "meta": meta}
-        
-        return JSONResponse(content={
-            "message": message, 
-            "data": data, 
-            "meta": meta
-        }, status_code=status_code)
-    except Exception as e:
-        return JSONResponse(content={
-            "message": str(e),
-            "data": None,
-        }, status_code=500)
-
+    data: DataType,
+    message: str = "Success",
+    meta: Dict[str, Any] = {},
+    status_code: int = 200
+) -> JSONResponse:
+    response_content = {
+        "message": message,
+        "meta": meta,
+        "data": data
+    }
+    return JSONResponse(content=response_content, status_code=status_code)
+    
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     errors = []

@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 from app.appctx import IGetResponseBase, response
 from app.presentation import request
 from app import finetune
+import json
 
 router = APIRouter()
 
@@ -15,12 +16,13 @@ async def fine_tune(params: request.ParamsListFinetuneJobs = Query(...)) -> IGet
             status_code=500,
             message="Failed:"+str(e)
         )
+    result = job_list.model_dump()
     return response(
         status_code=200,
         message="Success",
+        data= result["data"],
         meta= {
-            "total": job_list.total
-        },
-        data=job_list.data
+            "total": result["total"]
+        }
     )
 

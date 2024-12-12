@@ -39,7 +39,8 @@ async def fine_tune(model: str = Form(...),
         status_code=200,
         message="Success",
         data={
-            "id": job_result,
+            "file": result.model_dump(),
+            "job": job_result.model_dump()
         }
     )
 
