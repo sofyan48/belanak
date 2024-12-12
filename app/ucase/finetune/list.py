@@ -15,7 +15,6 @@ async def fine_tune(params: request.ParamsListFinetuneJobs = Query(...)) -> IGet
             status_code=500,
             message="Failed:"+str(e)
         )
-    print(job_list)
     return response(
         status_code=200,
         message="Success",

@@ -1,6 +1,11 @@
-from fastapi import APIRouter, File, UploadFile, Form
+from fastapi import (
+    APIRouter, 
+    File,
+    UploadFile, 
+    Form,
+    HTTPException
+)
 from app.appctx import IGetResponseBase, response
-from app.presentation import request
 from app import finetune
 
 router = APIRouter()
@@ -29,10 +34,12 @@ async def fine_tune(model: str = Form(...),
             message="Failed",
             data=None
         )
-
+    
     return response(
         status_code=200,
         message="Success",
-        data=job_result
+        data={
+            "id": job_result,
+        }
     )
 
